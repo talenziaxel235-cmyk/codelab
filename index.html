@@ -220,7 +220,7 @@ T.cyber.ctf.push(
 {t:'Atbash',d:'A↔Z, B↔Y… Décodez : ',gen:()=>atbash('FLAG{atbash_ok}'),f:'FLAG{atbash_ok}'},
 {t:'URL encodée',d:'Décodez ce paramètre d URL : ',gen:()=>encodeURIComponent('FLAG{url_decode}'),f:'FLAG{url_decode}'},
 {t:'En-têtes HTTP',d:'Inspectez cette réponse serveur (onglet Réseau des DevTools) :',gen:()=>'HTTP/1.1 200 OK\nServer: nginx\nX-Debug-Token: FLAG{en_tete_http}\nContent-Type: text/html',f:'FLAG{en_tete_http}',pre:true},
-{t:'Script suspect',d:'Ce script cache une chaîne en Base64 : ',gen:()=>'<script>\n  const k = atob("'+btoa('FLAG{js_atob}')+'");\n  console.log("init");\n</script>',f:'FLAG{js_atob}',pre:true},
+{t:'Script suspect',d:'Ce script cache une chaîne en Base64 : ',gen:()=>'<script>\n  const k = atob("'+btoa('FLAG{js_atob}')+'");\n  console.log("init");\n<\/script>',f:'FLAG{js_atob}',pre:true},
 {t:'Injection SQL',d:'Ce login contourne le mot de passe grâce à un commentaire SQL (--). Flag :',gen:()=>"SELECT * FROM users WHERE login='admin' -- ' AND pwd='x';\n-- le flag est FLAG{sqli_commentaire}",f:'FLAG{sqli_commentaire}',pre:true});
 [['cpp','Aide-mémoire & erreurs courantes','Segfault = accès mémoire invalide ; oubliez pas le ; après une classe ; < et > dans #include ; std:: devant cout. Compilez avec -Wall.','g++ -Wall -std=c++17 main.cpp -o prog && ./prog'],
 ['py','Aide-mémoire & erreurs courantes','IndentationError = mauvais décalage ; NameError = variable inconnue ; TypeError = types incompatibles ("a" + 1). Utilisez python -i pour tester.','python3 main.py\npip install requests'],
