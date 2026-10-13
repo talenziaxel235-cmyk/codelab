@@ -1,0 +1,14 @@
+# Site statique : aucune étape de build nécessaire
+[build]
+  publish = "."
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Fonctions serverless (proxy IA : la clé API reste secrète côté serveur)
+[functions]
+  directory = "netlify/functions"

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeLab – Programmation & Cybersécurité</title>
+<!--
+  ========== CONFIGURATION FIREBASE (à faire une seule fois) ==========
+  1. console.firebase.google.com → créer un projet → ajouter une "app Web" → copier la config ci-dessous.
+  2. Authentication → Sign-in method → activer "Anonyme" et "E-mail/Mot de passe".
+  3. Firestore Database → créer la base, puis règles :
+       rules_version = '2'; service cloud.firestore { match /databases/{d}/documents {
+         match /users/{uid} { allow read, write: if request.auth != null && request.auth.uid == uid; } } }
+  4. Authentication → Settings → Domaines autorisés : ajouter votre domaine *.netlify.app.
+  Les clés web Firebase sont publiques par conception : la sécurité vient des règles ci-dessus.
+  Sans configuration, le site fonctionne en mode hors-ligne (localStorage).
+  Déploiement : glisser-déposer le dossier (index.html + netlify.toml) sur app.netlify.com/drop
+-->
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--tx:#1b1f2a;--mut:#667085;--bd:#e3e6ee;--ac:#4f6df5;--ok:#16a34a;--ko:#dc2626;--code:#0f172a}
+[data-theme=dark]{--bg:#0e1117;--card:#161b24;--tx:#e6e9f0;--mut:#8b93a7;--bd:#262d3b;--ac:#7c93ff;--ok:#34d399;--ko:#f87171;--code:#0a0d13}
+*{box-sizing:border-box}body{margin:0;font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--card);border-bottom:1px solid var(--bd);position:sticky;top:0;z-index:5}
+.logo{font-weight:800;font-size:18px}.logo span{color:var(--ac)}
+.hr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button,.btn{font:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:7px 13px;border-radius:8px}
+button:hover{border-color:var(--ac)}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}button:disabled{opacity:.45;cursor:not-allowed}
+main{max-width:980px;margin:0 auto;padding:18px}
+.prog{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:16px}
+.bar{height:10px;background:var(--bd);border-radius:6px;overflow:hidden;margin:8px 0}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--ac),var(--ok));transition:width .4s}
+.badge{display:inline-block;margin:3px 4px 0 0;padding:2px 10px;border-radius:99px;font-size:13px;border:1px solid var(--bd);color:var(--mut)}.badge.on{color:var(--tx);border-color:var(--ok);background:color-mix(in srgb,var(--ok) 15%,transparent)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.tabs button{border-radius:99px}.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.sub{border-bottom:1px solid var(--bd);margin-bottom:14px}.sub button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none}.sub button.on{border-color:var(--ac);color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+.card h3{margin:0 0 8px}pre{background:var(--code);color:#e6e9f0;padding:12px;border-radius:8px;overflow:auto;margin:8px 0;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace}
+code{font-family:ui-monospace,Menlo,Consolas,monospace}.k{color:#c792ea}.s{color:#c3e88d}.c{color:#6b7694}.n{color:#f78c6c}
+.opt{display:block;width:100%;text-align:left;margin:5px 0}.opt.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 15%,transparent)}.opt.ko{border-color:var(--ko);background:color-mix(in srgb,var(--ko) 15%,transparent)}
+textarea,input{width:100%;font:13px ui-monospace,Menlo,Consolas,monospace;background:var(--code);color:#e6e9f0;border:1px solid var(--bd);border-radius:8px;padding:10px}
+input.l{font:inherit;background:var(--bg);color:var(--tx);margin:4px 0}textarea{min-height:120px;resize:vertical}
+.out{background:#000;color:#9ef0a8;min-height:44px;white-space:pre-wrap;padding:10px;border-radius:8px;margin-top:8px;font:13px ui-monospace,monospace}
+.mut{color:var(--mut)}.done{color:var(--ok);font-weight:600}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+dialog{background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:12px;max-width:340px;width:90%}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">&lt;/&gt; Code<span>Lab</span></div>
+  <div class="hr">
+    <span id="user" class="mut"></span>
+    <button id="authBtn" onclick="openAuth()">Connexion</button>
+    <button onclick="toggleTheme()" title="Thème">🌓</button>
+  </div>
+</header>
+<main>
+  <div class="prog">
+    <b>Progression globale : <span id="pct">0</span>%</b> · ⭐ <span id="pts">0</span> points
+    <div class="bar"><i id="barfill" style="width:0"></i></div>
+    <div id="badges"></div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="sub" id="sub"></div>
+  <div id="view"></div>
+</main>
+
+<dialog id="dlg">
+  <b>Connexion</b>
+  <input class="l" id="em" type="email" placeholder="E-mail">
+  <input class="l" id="pw" type="password" placeholder="Mot de passe (6+ car.)">
+  <div class="row"><button class="p" onclick="doAuth('in')">Se connecter</button><button onclick="doAuth('up')">Créer un compte</button></div>
+  <div class="row"><button onclick="doAuth('anon')">Continuer en anonyme</button><button onclick="dlg.close()">Fermer</button></div>
+  <p id="amsg" class="mut"></p>
+</dialog>
+
+<script type="module">
+/* ================= CONFIG FIREBASE : remplacer par vos valeurs ================= */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDsBlIgNhJCOYY1LdsGjlKb737Iz6M7u3o",
+  authDomain: "liste-cadeau-apsdl.firebaseapp.com",
+  databaseURL: "https://liste-cadeau-apsdl-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "liste-cadeau-apsdl",
+  storageBucket: "liste-cadeau-apsdl.firebasestorage.app",
+  messagingSenderId: "366384336356",
+  appId: "1:366384336356:web:8363aefe8bfdb88c024bf1",
+  measurementId: "G-DMWPG3NSSD"
+};
+
+/* ================= CONTENU PÉDAGOGIQUE ================= */
+const hello = (l) => l;
+const T = {
+ cpp:{n:'C++',i:'🔵',
+  docs:[
+   {t:'Variables & types',c:'Le C++ est typé statiquement : on déclare le type avant le nom.',k:'#include <iostream>\nint main() {\n  int age = 20;        // entier\n  double pi = 3.14;    // décimal\n  std::string nom = "Ada";\n  std::cout << nom << " " << age;\n}'},
+   {t:'Conditions & boucles',c:'if/else pour choisir, for/while pour répéter.',k:'for (int i = 0; i < 3; i++) {\n  if (i % 2 == 0) std::cout << i;\n  else std::cout << "impair";\n}'},
+   {t:'POO : classes',c:'Une classe regroupe données (attributs) et comportements (méthodes).',k:'class Chat {\n public:\n  std::string nom;\n  void miauler() { std::cout << nom << " miaule"; }\n};'},
+   {t:'Fonctions & références',c:"Une fonction se déclare avec son type de retour. Passer par référence (&) évite une copie et permet de modifier l'original ; const & protège la valeur.",k:'int carre(int x) { return x * x; }\nvoid incr(int &n) { n++; }          // modifie l original\nvoid lire(const std::string &s) {}  // lecture seule, sans copie'},
+   {t:'Tableaux & std::vector',c:'std::vector est un tableau dynamique sûr : il grandit tout seul et connaît sa taille. Préférez-le aux tableaux C.',k:'#include <vector>\nstd::vector<int> v = {1, 2, 3};\nv.push_back(4);\nfor (int x : v) std::cout << x;   // boucle range-based\nstd::cout << v.size();             // 4'},
+   {t:'Pointeurs & mémoire',c:"Un pointeur stocke une adresse. new alloue sur le tas, delete libère. Oublier delete provoque une fuite mémoire ; préférez les pointeurs intelligents (unique_ptr).",k:'int a = 5;\nint *p = &a;      // p contient l adresse de a\n*p = 10;          // a vaut maintenant 10\nauto u = std::make_unique<int>(42);  // libéré automatiquement'},
+   {t:'Héritage & polymorphisme',c:'Une classe fille hérite de la classe mère. Avec virtual, la bonne méthode est appelée selon le vrai type de l objet.',k:'class Animal { public: virtual void parler() { std::cout << "..."; } };\nclass Chien : public Animal {\n public: void parler() override { std::cout << "Wouf"; }\n};'},
+   {t:'Chaînes & entrées',c:'std::string gère le texte ; cin lit au clavier, getline lit une ligne entière avec espaces.',k:'std::string nom;\nstd::getline(std::cin, nom);\nstd::cout << nom.size() << " " << nom.substr(0, 3);'}],
+  quiz:[
+   {q:'Quel opérateur affiche du texte ?',o:['cin >>','cout <<','print()'],a:1,e:'std::cout << envoie vers la sortie standard.'},
+   {q:'Quel mot-clé crée une classe ?',o:['class','def','object'],a:0,e:'On utilise class (ou struct).'},
+   {q:'Quel type stocke 3.14 ?',o:['int','bool','double'],a:2,e:'double stocke des nombres décimaux.'},
+   {q:'Quel symbole passe un paramètre par référence ?',o:['*','&','@'],a:1,e:'int &x lie le paramètre à la variable d origine.'},
+   {q:'Quelle instruction ajoute un élément à un vector ?',o:['v.add(x)','v.push_back(x)','v.append(x)'],a:1,e:'push_back ajoute à la fin.'},
+   {q:'Que fait delete ?',o:['Efface un fichier','Libère la mémoire allouée par new','Supprime une classe'],a:1,e:'Chaque new doit avoir son delete (ou utiliser un smart pointer).'},
+   {q:'Quel mot-clé permet le polymorphisme ?',o:['static','virtual','final'],a:1,e:'virtual active la liaison dynamique.'},
+   {q:'Que vaut 7 / 2 avec deux int ?',o:['3.5','3','4'],a:1,e:'La division entière tronque le résultat.'}],
+  ex:[
+   {t:'Afficher "Bonjour"',d:'Écrivez un programme qui affiche Bonjour.',st:'#include <iostream>\nint main() {\n  // votre code\n}',must:[/cout\s*<<.*Bonjour/],out:'Bonjour',sol:'#include <iostream>\nint main() {\n  std::cout << "Bonjour";\n}'},
+   {t:'Compter de 1 à 3',d:'Affichez 1, 2, 3 avec une boucle for.',st:'#include <iostream>\nint main() {\n  // boucle ici\n}',must:[/for\s*\(/,/cout/],out:'1\n2\n3',sol:'for (int i = 1; i <= 3; i++)\n  std::cout << i << "\\n";'},
+   {t:'Fonction carre',d:'Écrivez une fonction int carre(int x) puis affichez carre(5) (25).',st:'#include <iostream>\n// votre fonction\nint main() {\n}',must:[/int\s+carre\s*\(/,/return/,/cout/],out:'25',sol:'int carre(int x) { return x * x; }\nint main() { std::cout << carre(5); }'},
+   {t:'Pair ou impair',d:'Avec if et %, affichez pair pour n = 4.',st:'#include <iostream>\nint main() {\n  int n = 4;\n}',must:[/if\s*\(/,/%\s*2/,/cout/],out:'pair',sol:'if (n % 2 == 0) std::cout << "pair";\nelse std::cout << "impair";'},
+   {t:'Somme d un vector',d:'Parcourez un vector {1,2,3} et affichez la somme (6).',st:'#include <iostream>\n#include <vector>\nint main() {\n  std::vector<int> v = {1, 2, 3};\n}',must:[/for\s*\(/,/\+=/,/cout/],out:'6',sol:'int s = 0;\nfor (int x : v) s += x;\nstd::cout << s;'}]},
+ py:{n:'Python',i:'🟡',
+  docs:[
+   {t:'Variables & types',c:'Python est dynamique : pas de déclaration de type.',k:'age = 20\npi = 3.14\nnom = "Ada"\nprint(nom, age)  # affichage'},
+   {t:'Conditions & boucles',c:"L'indentation définit les blocs.",k:'for i in range(3):\n    if i % 2 == 0:\n        print(i)\n    else:\n        print("impair")'},
+   {t:'POO : classes',c:'__init__ est le constructeur ; self désigne l\'instance.',k:'class Chat:\n    def __init__(self, nom):\n        self.nom = nom\n    def miauler(self):\n        print(self.nom, "miaule")'},
+   {t:'Listes & tuples',c:'Une liste est modifiable, un tuple non. Les index commencent à 0 et les négatifs partent de la fin.',k:'fruits = ["pomme", "poire"]\nfruits.append("kiwi")\nprint(fruits[0], fruits[-1], len(fruits))\nprint(fruits[0:2])      # slicing\nt = (1, 2)               # tuple immuable'},
+   {t:'Dictionnaires & ensembles',c:'Un dict associe des clés à des valeurs ; un set ne garde que des éléments uniques.',k:'perso = {"nom": "Ada", "age": 36}\nperso["pays"] = "UK"\nfor cle, val in perso.items():\n    print(cle, val)\nprint(set([1, 1, 2]))   # {1, 2}'},
+   {t:'Fonctions & lambda',c:'Les paramètres peuvent avoir une valeur par défaut. Une lambda est une mini-fonction anonyme.',k:'def saluer(nom, ponct="!"):\n    return "Salut " + nom + ponct\ncarre = lambda x: x * x\nprint(list(map(carre, [1, 2, 3])))'},
+   {t:'Compréhensions de listes',c:'Une façon concise de construire une liste à partir d une autre.',k:'carres = [x * x for x in range(5)]\npairs = [x for x in range(10) if x % 2 == 0]'},
+   {t:'Fichiers & exceptions',c:'with ferme le fichier automatiquement. try/except évite que le programme plante.',k:'try:\n    with open("data.txt") as f:\n        print(f.read())\nexcept FileNotFoundError:\n    print("Fichier absent")'}],
+  quiz:[
+   {q:'Quel mot-clé définit une fonction ?',o:['func','def','function'],a:1,e:'def nom(): définit une fonction.'},
+   {q:'Que renvoie range(3) ?',o:['1,2,3','0,1,2','0,1,2,3'],a:1,e:'range(3) va de 0 à 2.'},
+   {q:'Comment commenter ?',o:['// texte','/* texte */','# texte'],a:2,e:'# commence un commentaire.'},
+   {q:'Quelle méthode ajoute à une liste ?',o:['add()','append()','push()'],a:1,e:'liste.append(x) ajoute en fin de liste.'},
+   {q:'Comment lire la valeur de la clé "nom" ?',o:['d.nom','d["nom"]','d(nom)'],a:1,e:'On utilise les crochets avec la clé.'},
+   {q:'Que renvoie len("abc") ?',o:['2','3','4'],a:1,e:'len compte les éléments : 3 caractères.'},
+   {q:'Quel bloc gère une erreur ?',o:['try / except','catch / throw','if / error'],a:0,e:'Python utilise try et except.'},
+   {q:'Que vaut 7 // 2 ?',o:['3','3.5','4'],a:0,e:'// est la division entière.'}],
+  ex:[
+   {t:'Afficher "Bonjour"',d:'Affichez Bonjour.',st:'# votre code\n',must:[/print\s*\(.*Bonjour/],out:'Bonjour',sol:'print("Bonjour")'},
+   {t:'Compter de 1 à 3',d:'Affichez 1, 2, 3 avec une boucle.',st:'# boucle ici\n',must:[/for\s+\w+\s+in\s+range/,/print/],out:'1\n2\n3',sol:'for i in range(1, 4):\n    print(i)'},
+   {t:'Fonction carre',d:'Définissez def carre(x) et affichez carre(5) (25).',st:'# votre fonction\n',must:[/def\s+carre\s*\(/,/return/,/print/],out:'25',sol:'def carre(x):\n    return x * x\nprint(carre(5))'},
+   {t:'Pair ou impair',d:'Avec if et %, affichez pair pour n = 4.',st:'n = 4\n',must:[/if\s+.*%\s*2/,/print/],out:'pair',sol:'if n % 2 == 0:\n    print("pair")\nelse:\n    print("impair")'},
+   {t:'Somme d une liste',d:'Affichez la somme de [1, 2, 3] (6).',st:'nombres = [1, 2, 3]\n',must:[/sum\s*\(|for\s+\w+\s+in/,/print/],out:'6',sol:'print(sum(nombres))'}]},
+ java:{n:'Java',i:'☕',
+  docs:[
+   {t:'Variables & types',c:'Java est fortement typé ; tout est dans une classe.',k:'public class Main {\n  public static void main(String[] args) {\n    int age = 20;\n    double pi = 3.14;\n    String nom = "Ada";\n    System.out.println(nom + age);\n  }\n}'},
+   {t:'Conditions & boucles',c:'Même syntaxe que C++ pour if/for/while.',k:'for (int i = 0; i < 3; i++) {\n  if (i % 2 == 0) System.out.println(i);\n}'},
+   {t:'POO : classes',c:'Les attributs sont souvent private, avec des accesseurs.',k:'class Chat {\n  private String nom;\n  Chat(String nom) { this.nom = nom; }\n  void miauler() { System.out.println(nom + " miaule"); }\n}'},
+   {t:'Tableaux & ArrayList',c:'Un tableau a une taille fixe ; ArrayList est dynamique et fournit add, get, size.',k:'int[] t = {1, 2, 3};\nSystem.out.println(t.length);\nArrayList<String> l = new ArrayList<>();\nl.add("a");\nSystem.out.println(l.get(0) + l.size());'},
+   {t:'Méthodes & surcharge',c:'Une méthode peut exister en plusieurs versions (surcharge) si ses paramètres diffèrent.',k:'static int carre(int x) { return x * x; }\nstatic double carre(double x) { return x * x; }'},
+   {t:'Héritage & interfaces',c:'extends hérite d une classe, implements applique une interface (un contrat de méthodes).',k:'interface Parleur { void parler(); }\nclass Chien extends Animal implements Parleur {\n  public void parler() { System.out.println("Wouf"); }\n}'},
+   {t:'Exceptions',c:'try/catch intercepte les erreurs, finally s exécute toujours.',k:'try {\n  int x = Integer.parseInt("abc");\n} catch (NumberFormatException e) {\n  System.out.println("Nombre invalide");\n} finally {\n  System.out.println("Fin");\n}'},
+   {t:'Collections : Map',c:'HashMap associe clés et valeurs, comme un dictionnaire.',k:'Map<String,Integer> m = new HashMap<>();\nm.put("Ada", 36);\nSystem.out.println(m.get("Ada"));'}],
+  quiz:[
+   {q:'Point d\'entrée d\'un programme Java ?',o:['main','start','run'],a:0,e:'public static void main(String[] args).'},
+   {q:'Quel type pour du texte ?',o:['string','String','char[]'],a:1,e:'String (majuscule) est une classe.'},
+   {q:'Mot-clé pour hériter ?',o:['extends','inherits','implements'],a:0,e:'extends pour une classe parente.'},
+   {q:'Quelle taille a un tableau int[5] ?',o:['4','5','Variable'],a:1,e:'Taille fixe de 5 éléments.'},
+   {q:'Quel mot-clé définit une interface ?',o:['interface','contract','abstract class'],a:0,e:'interface Nom { ... }.'},
+   {q:'Quand s exécute finally ?',o:['Jamais','Seulement sans erreur','Toujours'],a:2,e:'Avec ou sans exception.'},
+   {q:'Comment comparer deux String ?',o:['==','equals()','compare()'],a:1,e:'== compare les références, equals() le contenu.'},
+   {q:'Quelle collection associe clé et valeur ?',o:['ArrayList','HashMap','HashSet'],a:1,e:'Map / HashMap.'}],
+  ex:[
+   {t:'Afficher "Bonjour"',d:'Affichez Bonjour.',st:'public class Main {\n  public static void main(String[] a) {\n    // votre code\n  }\n}',must:[/System\.out\.print(ln)?\s*\(.*Bonjour/],out:'Bonjour',sol:'System.out.println("Bonjour");'},
+   {t:'Compter de 1 à 3',d:'Affichez 1, 2, 3 avec une boucle for.',st:'public class Main {\n  public static void main(String[] a) {\n    // boucle ici\n  }\n}',must:[/for\s*\(/,/System\.out/],out:'1\n2\n3',sol:'for (int i = 1; i <= 3; i++)\n  System.out.println(i);'},
+   {t:'Méthode carre',d:'Écrivez static int carre(int x) et affichez carre(5) (25).',st:'public class Main {\n  // votre méthode\n  public static void main(String[] a) {\n  }\n}',must:[/int\s+carre\s*\(/,/return/,/System\.out/],out:'25',sol:'static int carre(int x) { return x * x; }\n// main : System.out.println(carre(5));'},
+   {t:'Pair ou impair',d:'Avec if et %, affichez pair pour n = 4.',st:'public class Main {\n  public static void main(String[] a) {\n    int n = 4;\n  }\n}',must:[/if\s*\(/,/%\s*2/,/System\.out/],out:'pair',sol:'if (n % 2 == 0) System.out.println("pair");\nelse System.out.println("impair");'},
+   {t:'Somme d un tableau',d:'Parcourez {1,2,3} et affichez la somme (6).',st:'public class Main {\n  public static void main(String[] a) {\n    int[] t = {1, 2, 3};\n  }\n}',must:[/for\s*\(/,/\+=/,/System\.out/],out:'6',sol:'int s = 0;\nfor (int x : t) s += x;\nSystem.out.println(s);'}]},
+ cyber:{n:'Cybersécurité',i:'🛡️',
+  docs:[
+   {t:'Cryptographie',c:'Un hash (SHA-256) est à sens unique et sert à vérifier l\'intégrité. Un chiffrement (AES) est réversible avec la clé. Base64 est un encodage, PAS un chiffrement.',k:'echo -n "secret" | sha256sum\necho "SGVsbG8=" | base64 -d   # Hello'},
+   {t:'Sécurité Web : SQLi & XSS',c:"Injection SQL : une entrée non filtrée modifie la requête. XSS : du script injecté s'exécute chez la victime. Défense : requêtes préparées, échappement de sortie, CSP.",k:"-- Vulnérable\nSELECT * FROM users WHERE name = '' OR '1'='1';\n-- Sûr (requête préparée)\nSELECT * FROM users WHERE name = ?;"},
+   {t:'Réseau & OSINT',c:"Nmap, Wireshark et whois servent à cartographier et analyser. L'OSINT exploite des sources publiques (DNS, réseaux sociaux, métadonnées). Toujours dans un cadre légal et autorisé.",k:'nmap -sV 192.168.1.0/24\nwhois exemple.com'},
+   {t:'Mots de passe & MFA',c:"Un bon mot de passe est long (passphrase 14+ caractères), unique par service et stocké dans un gestionnaire. Côté serveur : hash lent et salé (bcrypt, Argon2), jamais en clair. L'authentification multifacteur bloque l'immense majorité des prises de compte.",k:'bcrypt.hash(mdp, 12)   // sel intégré, coût réglable\n// Ne jamais faire : md5(mdp)  ou  stockage en clair'},
+   {t:'OWASP Top 10',c:"Référence des risques web : contrôle d accès défaillant, défaillances cryptographiques, injection, conception non sécurisée, mauvaise configuration, composants vulnérables, authentification faible, intégrité des données, journalisation insuffisante, SSRF.",k:'// Contrôle d accès : toujours vérifier côté serveur\nif (req.user.id !== ressource.ownerId) return 403;'},
+   {t:'Linux & permissions',c:"Chaque fichier a des droits lecture(r)/écriture(w)/exécution(x) pour propriétaire, groupe, autres. Principe du moindre privilège : n'accordez que le nécessaire.",k:'ls -l secret.txt      # -rw-r----- ...\nchmod 600 secret.txt  # rw- pour le proprio seul\nsudo -l               # droits sudo de l utilisateur'},
+   {t:'Phishing & ingénierie sociale',c:'L attaquant exploite l humain : urgence, autorité, peur. Vérifiez l expéditeur réel, survolez les liens, ne donnez jamais de code MFA, et signalez les messages suspects.',k:'De: support@paypa1.com   <- "1" à la place de "l"\nObjet: URGENT - compte suspendu !'},
+   {t:'Outils & bonnes pratiques CTF',c:"En CTF : lire l énoncé, inspecter (code source, en-têtes, robots.txt), tester les encodages courants (Base64, hex, ROT13), documenter chaque étape. CyberChef, Burp Suite et Wireshark sont des classiques. Pratiquez uniquement sur des cibles autorisées.",k:'file mystere.bin\nstrings mystere.bin | grep FLAG\ncurl -i https://exemple.ctf/robots.txt'}],
+  quiz:[
+   {q:'Base64 est…',o:['un chiffrement','un encodage','un hash'],a:1,e:'Réversible sans clé : ce n\'est pas de la sécurité.'},
+   {q:'Meilleure défense contre SQLi ?',o:['Requêtes préparées','Cacher le formulaire','Utiliser GET'],a:0,e:'Séparer le code SQL des données.'},
+   {q:'XSS signifie…',o:['Cross-Site Scripting','Extra Secure Socket','XML Style Sheet'],a:0,e:'Injection de script côté client.'},
+   {q:'Quel stockage de mot de passe est correct ?',o:['MD5','Texte clair','Argon2 / bcrypt salé'],a:2,e:'Un hash lent et salé ralentit le brute force.'},
+   {q:'chmod 600 donne…',o:['rw- au propriétaire seul','rwx à tous','Lecture seule à tous'],a:0,e:'6 = lecture + écriture, 0 pour groupe et autres.'},
+   {q:'Quel signe trahit un phishing ?',o:['Expéditeur au domaine imité','Message en français','Une pièce jointe'],a:0,e:'Typosquatting : paypa1 au lieu de paypal.'},
+   {q:'Le principe du moindre privilège consiste à…',o:['Donner tous les droits','Donner le strict nécessaire','Supprimer les comptes'],a:1,e:'Réduit les dégâts en cas de compromission.'},
+   {q:'Que protège le MFA ?',o:['Contre le vol du seul mot de passe','Contre tous les virus','Le réseau Wi-Fi'],a:0,e:'Un second facteur reste nécessaire.'}],
+  ctf:[
+   {t:'Décode-moi (Base64)',d:'Décodez ce message : ',gen:()=>btoa('FLAG{base64_facile}'),f:'FLAG{base64_facile}'},
+   {t:'Ave César',d:'Décalage de 3 vers la droite. Retrouvez le flag : ',gen:()=>caesar('FLAG{cesar_decode}',3),f:'FLAG{cesar_decode}'},
+   {t:'Hexadécimal',d:'Convertissez cet hex en ASCII : ',gen:()=>[...'FLAG{hex_ok}'].map(c=>c.charCodeAt(0).toString(16)).join(''),f:'FLAG{hex_ok}'},
+   {t:'Inspecteur XSS',d:"Lisez ce code source d'une page vulnérable : un développeur a laissé un secret. Quelle balise permettrait l'XSS ? (<script>) — et où est le flag ?",gen:()=>'<form action="/search">\n  <input name="q">\n</form>\n<!-- TODO retirer : FLAG{xss_inspecte} -->\n<div>Résultats pour : <?= $_GET["q"] ?></div>',f:'FLAG{xss_inspecte}',pre:true},
+   {t:'ROT13',d:'ROT13 est un César de 13. Décodez : ',gen:()=>caesar('FLAG{rot13_classique}',13),f:'FLAG{rot13_classique}'},
+   {t:'Binaire',d:'Chaque octet est un caractère ASCII. Décodez : ',gen:()=>[...'FLAG{binaire_ok}'].map(c=>c.charCodeAt(0).toString(2).padStart(8,'0')).join(' '),f:'FLAG{binaire_ok}'},
+   {t:'Double emballage',d:'Quelqu un a encodé deux fois. Décodez : ',gen:()=>btoa(btoa('FLAG{double_base64}')),f:'FLAG{double_base64}'},
+   {t:'robots.txt indiscret',d:'Ce fichier public révèle un chemin censé rester caché. Trouvez le flag :',gen:()=>'User-agent: *\nDisallow: /admin/\nDisallow: /backup/FLAG{robots_txt_leak}/\nAllow: /',f:'FLAG{robots_txt_leak}',pre:true}]}
+};
+function caesar(s,n){return s.replace(/[a-z]/gi,ch=>{const b=ch<'a'?65:97;return String.fromCharCode((ch.charCodeAt(0)-b+n)%26+b)})}
+/* ===== CONTENU SUPPLÉMENTAIRE : 15+ quiz et 15+ exercices par parcours ===== */
+const Q=(q,o,a,e)=>({q,o,a,e});
+const P=/cout|print|System\.out/;
+const ST={cpp:'#include <iostream>\n#include <string>\n#include <algorithm>\nint main() {\n  // votre code\n}',py:'# votre code\n',java:'public class Main {\n  public static void main(String[] a) {\n    // votre code\n  }\n}'};
+T.cpp.quiz.push(Q('Quel header pour std::string ?',['<string>','<text>','<str>'],0,'#include <string>.'),Q('Que fait ++i ?',['Décrémente i','Incrémente i de 1','Double i'],1,'++ ajoute 1.'),Q('Quel type stocke vrai/faux ?',['bool','boolean','bit'],0,'bool vaut true ou false.'),Q('Quelle boucle s exécute au moins une fois ?',['for','while','do...while'],2,'Le test se fait après le corps.'),Q('Que renvoie main() en cas de succès ?',['0','1','-1'],0,'Par convention 0 = succès.'),Q('Membres par défaut d une struct ?',['Privés','Publics','Protégés'],1,'struct : public ; class : private.'),Q('Que fait const sur une variable ?',['Interdit de la modifier','La rend globale','La supprime'],0,'Elle devient en lecture seule.'));
+T.py.quiz.push(Q('"abc".upper() renvoie ?',['abc','ABC','Abc'],1,'upper met en majuscules.'),Q('Quel opérateur élève à la puissance ?',['^','**','//'],1,'2 ** 3 = 8.'),Q('Quel type est [1, 2] ?',['tuple','list','set'],1,'Crochets = liste.'),Q('Comment importer math ?',['import math','include math','using math'],0,'import math.'),Q('Que vaut bool("") ?',['True','False','Erreur'],1,'Une chaîne vide est fausse.'),Q('Que fait break ?',['Saute une itération','Quitte la boucle','Arrête le programme'],1,'continue saute, break sort.'),Q('Quel mot-clé teste l appartenance ?',['in','has','contains'],0,'3 in [1, 2, 3].'));
+T.java.quiz.push(Q('Quel type stocke un grand entier (64 bits) ?',['int','long','short'],1,'long = 64 bits.'),Q('Comment créer un objet ?',['new Chat()','Chat.create()','make Chat'],0,'new appelle le constructeur.'),Q('Que signifie static ?',['Appartient à la classe','Constant','Privé'],0,'Pas besoin d instance.'),Q('Que contient un fichier .class ?',['Du code source','Du bytecode','Du texte'],1,'Exécuté par la JVM.'),Q('Quel mot-clé empêche l héritage ?',['final','private','const'],0,'class final ne peut pas être étendue.'),Q('Quelle méthode donne la taille d un String ?',['size()','length()','len()'],1,'"abc".length() = 3.'),Q('Quel mot-clé lève une exception ?',['throw','raise','error'],0,'throw new Exception().'));
+T.cyber.quiz.push(Q('Que fait un pare-feu ?',['Filtre le trafic réseau','Chiffre les disques','Sauvegarde les données'],0,'Autorise ou bloque selon des règles.'),Q('Port par défaut de HTTPS ?',['80','443','22'],1,'80 = HTTP, 22 = SSH.'),Q('Que signifie CTF ?',['Capture The Flag','Code The Firewall','Crypto Test Format'],0,'Compétition de défis de sécurité.'),Q('Quelle attaque sature un service ?',['DDoS','XSS','SQLi'],0,'Déni de service distribué.'),Q('SSH sert à…',['Accès distant chiffré','Envoyer des mails','Résoudre les DNS'],0,'Remplace telnet.'),Q('Rôle de la CSP ?',['Limiter les scripts autorisés','Compresser les images','Accélérer le DNS'],0,'Réduit l impact des XSS.'),Q('Un ransomware…',['Chiffre vos données contre rançon','Espionne le Wi-Fi','Bloque les pubs'],0,'Sauvegardes hors ligne = meilleure parade.'));
+// Exercices communs aux 3 langages : [titre, énoncé, sortie, motifs requis, {solutions}]
+[
+['Maximum de deux nombres','Avec a = 3 et b = 8, affichez le plus grand (8).','8',[/max|if|\?/,P],{cpp:'int a = 3, b = 8;\nstd::cout << (a > b ? a : b);',py:'a, b = 3, 8\nprint(max(a, b))',java:'int a = 3, b = 8;\nSystem.out.println(Math.max(a, b));'}],
+['Factorielle de 5','Calculez 5! avec une boucle (120).','120',[/for|while/,/\*/],{cpp:'int f = 1;\nfor (int i = 2; i <= 5; i++) f *= i;\nstd::cout << f;',py:'f = 1\nfor i in range(2, 6):\n    f *= i\nprint(f)',java:'int f = 1;\nfor (int i = 2; i <= 5; i++) f *= i;\nSystem.out.println(f);'}],
+['Inverser une chaîne','Affichez "abc" à l envers (cba).','cba',[/reverse|\[::-1\]/,P],{cpp:'std::string s = "abc";\nstd::reverse(s.begin(), s.end());\nstd::cout << s;',py:'print("abc"[::-1])',java:'System.out.println(new StringBuilder("abc").reverse());'}],
+['Table de 3','Affichez 3, 6, 9 avec une boucle.','3\n6\n9',[/for|while/,/\*|\+/],{cpp:'for (int i = 1; i <= 3; i++)\n  std::cout << 3 * i << "\\n";',py:'for i in range(1, 4):\n    print(3 * i)',java:'for (int i = 1; i <= 3; i++)\n  System.out.println(3 * i);'}],
+['Compter les voyelles','Combien de voyelles dans "bonjour" ? (3)','3',[/for|while|sum/,/aeiou/],{cpp:'std::string s = "bonjour";\nint n = 0;\nfor (char ch : s)\n  if (std::string("aeiou").find(ch) != std::string::npos) n++;\nstd::cout << n;',py:'print(sum(1 for c in "bonjour" if c in "aeiou"))',java:'int n = 0;\nfor (char c : "bonjour".toCharArray())\n  if ("aeiou".indexOf(c) >= 0) n++;\nSystem.out.println(n);'}],
+['Palindrome','"kayak" est-il un palindrome ? Affichez oui ou non.','oui',[/oui/,/non/,/==|equals/],{cpp:'std::string s = "kayak", r = s;\nstd::reverse(r.begin(), r.end());\nstd::cout << (s == r ? "oui" : "non");',py:'s = "kayak"\nprint("oui" if s == s[::-1] else "non")',java:'String s = "kayak";\nString r = new StringBuilder(s).reverse().toString();\nSystem.out.println(s.equals(r) ? "oui" : "non");'}],
+['Suite de Fibonacci','Affichez les 5 premiers termes : 0 1 1 2 3.','0\n1\n1\n2\n3',[/for|while/,/\+/],{cpp:'int a = 0, b = 1;\nfor (int i = 0; i < 5; i++) {\n  std::cout << a << "\\n";\n  int t = a + b; a = b; b = t;\n}',py:'a, b = 0, 1\nfor _ in range(5):\n    print(a)\n    a, b = b, a + b',java:'int a = 0, b = 1;\nfor (int i = 0; i < 5; i++) {\n  System.out.println(a);\n  int t = a + b; a = b; b = t;\n}'}],
+['Nombre premier','7 est-il premier ? Affichez premier ou non.','premier',[/%/,/for|while|all/,/premier/],{cpp:'int n = 7; bool p = n > 1;\nfor (int i = 2; i < n; i++)\n  if (n % i == 0) p = false;\nstd::cout << (p ? "premier" : "non");',py:'n = 7\nprint("premier" if n > 1 and all(n % i for i in range(2, n)) else "non")',java:'int n = 7; boolean p = n > 1;\nfor (int i = 2; i < n; i++)\n  if (n % i == 0) p = false;\nSystem.out.println(p ? "premier" : "non");'}],
+['Moyenne','Moyenne de 2, 4 et 6 (4).','4',[/\//,P],{cpp:'int t[] = {2, 4, 6};\nstd::cout << (t[0] + t[1] + t[2]) / 3;',py:'print(sum([2, 4, 6]) // 3)',java:'int[] t = {2, 4, 6};\nSystem.out.println((t[0] + t[1] + t[2]) / 3);'}],
+['FizzBuzz (1 à 5)','Affichez i ; Fizz si multiple de 3 ; Buzz si multiple de 5.','1\n2\nFizz\n4\nBuzz',[/%\s*3/,/%\s*5/,/Fizz/,/for|while/],{cpp:'for (int i = 1; i <= 5; i++) {\n  if (i % 3 == 0) std::cout << "Fizz";\n  else if (i % 5 == 0) std::cout << "Buzz";\n  else std::cout << i;\n  std::cout << "\\n";\n}',py:'for i in range(1, 6):\n    if i % 3 == 0: print("Fizz")\n    elif i % 5 == 0: print("Buzz")\n    else: print(i)',java:'for (int i = 1; i <= 5; i++) {\n  if (i % 3 == 0) System.out.println("Fizz");\n  else if (i % 5 == 0) System.out.println("Buzz");\n  else System.out.println(i);\n}'}]
+].forEach(([t,d,out,must,sol])=>['cpp','py','java'].forEach(l=>T[l].ex.push({t,d,st:ST[l],must,out,sol:sol[l]})));
+const atbash=s=>s.replace(/[a-z]/gi,c=>{const b=c<'a'?65:97;return String.fromCharCode(b+25-(c.charCodeAt(0)-b))});
+T.cyber.ctf.push(
+{t:'César +7',d:'Décalage de 7. Décodez : ',gen:()=>caesar('FLAG{cesar_sept}',7),f:'FLAG{cesar_sept}'},
+{t:'Miroir',d:'Le message est écrit à l envers : ',gen:()=>[...'FLAG{miroir_ok}'].reverse().join(''),f:'FLAG{miroir_ok}'},
+{t:'Atbash',d:'A↔Z, B↔Y… Décodez : ',gen:()=>atbash('FLAG{atbash_ok}'),f:'FLAG{atbash_ok}'},
+{t:'URL encodée',d:'Décodez ce paramètre d URL : ',gen:()=>encodeURIComponent('FLAG{url_decode}'),f:'FLAG{url_decode}'},
+{t:'En-têtes HTTP',d:'Inspectez cette réponse serveur (onglet Réseau des DevTools) :',gen:()=>'HTTP/1.1 200 OK\nServer: nginx\nX-Debug-Token: FLAG{en_tete_http}\nContent-Type: text/html',f:'FLAG{en_tete_http}',pre:true},
+{t:'Script suspect',d:'Ce script cache une chaîne en Base64 : ',gen:()=>'<script>\n  const k = atob("'+btoa('FLAG{js_atob}')+'");\n  console.log("init");\n</script>',f:'FLAG{js_atob}',pre:true},
+{t:'Injection SQL',d:'Ce login contourne le mot de passe grâce à un commentaire SQL (--). Flag :',gen:()=>"SELECT * FROM users WHERE login='admin' -- ' AND pwd='x';\n-- le flag est FLAG{sqli_commentaire}",f:'FLAG{sqli_commentaire}',pre:true});
+[['cpp','Aide-mémoire & erreurs courantes','Segfault = accès mémoire invalide ; oubliez pas le ; après une classe ; < et > dans #include ; std:: devant cout. Compilez avec -Wall.','g++ -Wall -std=c++17 main.cpp -o prog && ./prog'],
+['py','Aide-mémoire & erreurs courantes','IndentationError = mauvais décalage ; NameError = variable inconnue ; TypeError = types incompatibles ("a" + 1). Utilisez python -i pour tester.','python3 main.py\npip install requests'],
+['java','Aide-mémoire & erreurs courantes','NullPointerException = objet null ; ArrayIndexOutOfBounds = index hors limites ; le fichier doit porter le nom de la classe publique.','javac Main.java\njava Main'],
+['cyber','Éthique & légalité','Testez uniquement vos propres systèmes ou des plateformes autorisées (CTF, labs). Tout accès non autorisé est un délit. Divulguez les failles de façon responsable.','# Plateformes légales : TryHackMe, HackTheBox, root-me.org, picoCTF']].forEach(([l,t,c,k])=>T[l].docs.push({t,c,k}));
+
+const PTS={q:10,e:20,c:30};
+const keysOf=k=>{const t=T[k],a=[];t.quiz.forEach((_,i)=>a.push(k+':q'+i));(t.ex||[]).forEach((_,i)=>a.push(k+':e'+i));(t.ctf||[]).forEach((_,i)=>a.push(k+':c'+i));return a};
+const ALL=Object.keys(T).flatMap(keysOf);
+
+/* ================= ÉTAT & SAUVEGARDE ================= */
+let S=JSON.parse(localStorage.getItem('codelab')||'{"done":{}}');
+let cur='cpp',sec='docs',user=null,FB=null,tries={};
+const $=id=>document.getElementById(id);
+const pts=()=>Object.keys(S.done).reduce((a,k)=>a+PTS[k.split(':')[1][0]],0);
+function save(){
+  localStorage.setItem('codelab',JSON.stringify(S));
+  if(FB&&user){FB.setDoc(FB.doc(FB.db,'users',user.uid),{done:S.done,points:pts(),updated:Date.now()}).catch(()=>{})}
+  renderTop();
+}
+function win(id){if(!S.done[id]){S.done[id]=1;save();return true}return false}
+
+/* ================= FIREBASE (chargé seulement si configuré) ================= */
+async function initFB(){
+  if(FIREBASE_CONFIG.apiKey.startsWith('VOTRE')){$('user').textContent='Mode hors-ligne';return}
+  try{
+    const v='10.12.2',g=`https://www.gstatic.com/firebasejs/${v}/`;
+    const [A,Au,Fs]=await Promise.all([import(g+'firebase-app.js'),import(g+'firebase-auth.js'),import(g+'firebase-firestore.js')]);
+    const app=A.initializeApp(FIREBASE_CONFIG),auth=Au.getAuth(app),db=Fs.getFirestore(app);
+    FB={auth,db,doc:Fs.doc,setDoc:Fs.setDoc,Au};
+    let unsub=null;
+    Au.onAuthStateChanged(auth,u=>{
+      user=u;renderTop();if(unsub)unsub();
+      if(!u)return;
+      unsub=Fs.onSnapshot(Fs.doc(db,'users',u.uid),s=>{ // synchronisation temps réel
+        const d=s.exists()?s.data().done||{}:{};
+        const merged={...d,...S.done};
+        if(JSON.stringify(merged)!==JSON.stringify(S.done)||JSON.stringify(merged)!==JSON.stringify(d)){S.done=merged;save();render()}
+      });
+    });
+  }catch(e){FB=null;$('user').textContent='Firebase indisponible (local)'}
+}
+window.openAuth=()=>{
+  if(FB&&user){FB.Au.signOut(FB.auth);return}
+  if(!FB){alert('Firebase non configuré : votre progression est sauvegardée localement. Voir les instructions en haut de index.html.');return}
+  $('amsg').textContent='';$('dlg').showModal();
+};
+window.doAuth=async m=>{
+  const {Au,auth}=FB,e=$('em').value,p=$('pw').value;
+  try{
+    if(m==='anon')await Au.signInAnonymously(auth);
+    else if(m==='up')await Au.createUserWithEmailAndPassword(auth,e,p);
+    else await Au.signInWithEmailAndPassword(auth,e,p);
+    $('dlg').close();
+  }catch(err){$('amsg').textContent=err.code||err.message}
+};
+
+/* ================= RENDU ================= */
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// Coloration syntaxique légère (une seule passe pour éviter les chevauchements)
+const RX=/(\/\/.*|#(?!include).*|--.*)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|\b(int|double|float|bool|char|void|class|public|private|static|return|if|else|for|while|def|self|import|new|extends|String|std|include|SELECT|FROM|WHERE|in|range|print)\b|\b(\d+)\b/g;
+const hl=c=>esc(c).replace(RX,(m,c1,s,k,n)=>c1?`<span class=c>${c1}</span>`:s?`<span class=s>${s}</span>`:k?`<span class=k>${k}</span>`:`<span class=n>${n}</span>`);
+function renderTop(){
+  const p=Math.round(ALL.filter(k=>S.done[k]).length/ALL.length*100);
+  $('pct').textContent=p;$('pts').textContent=pts();$('barfill').style.width=p+'%';
+  $('badges').innerHTML=Object.keys(T).map(k=>`<span class="badge ${keysOf(k).every(x=>S.done[x])?'on':''}">${T[k].i} ${T[k].n}${keysOf(k).every(x=>S.done[x])?' 🏅':''}</span>`).join('');
+  $('user').textContent=user?('👤 '+(user.email||'Anonyme')):(FB?'Non connecté':'Mode hors-ligne');
+  $('authBtn').textContent=user?'Déconnexion':'Connexion';
+}
+function render(){
+  const t=T[cur],secs=cur==='cyber'?[['docs','📖 Notions'],['quiz','📝 Quiz'],['ctf','🚩 Défis CTF']]:[['docs','📖 Documentation'],['quiz','📝 Quiz'],['ex','💻 Exercices']];
+  $('tabs').innerHTML=Object.keys(T).map(k=>`<button class="${k===cur?'on':''}" onclick="go('${k}')">${T[k].i} ${T[k].n}</button>`).join('')+`<button class="${cur==='ai'?'on':''}" onclick="go('ai')">🤖 Assistant IA</button>`;
+  if(cur==='ai'){$('sub').innerHTML='';$('view').innerHTML=aiHTML();renderTop();return}
+  $('sub').innerHTML=secs.map(([k,l])=>`<button class="${k===sec?'on':''}" onclick="gs('${k}')">${l}</button>`).join('');
+  let h='';
+  if(sec==='docs')h=t.docs.map(d=>`<div class=card><h3>${d.t}</h3><p>${d.c}</p><pre>${hl(d.k)}</pre></div>`).join('');
+  if(sec==='quiz')h=t.quiz.map((q,i)=>{const id=cur+':q'+i,r=window['_a'+id];return `<div class=card><b>${i+1}. ${q.q}</b>${q.o.map((o,j)=>`<button class="opt ${r!==undefined?(j===q.a?'ok':j===r?'ko':''):''}" ${r!==undefined?'disabled':''} onclick="ans('${id}',${i},${j})">${o}</button>`).join('')}${r!==undefined?`<p>${r===q.a?'✅ Bravo ! ':'❌ Raté. '}${q.e}</p>`:''}${S.done[id]?'<span class=done>Validé +10 pts</span>':''}</div>`}).join('');
+  if(sec==='ex')h=t.ex.map((x,i)=>{const id=cur+':e'+i;return `<div class=card><h3>${x.t} ${S.done[id]?'<span class=done>✔ +20 pts</span>':''}</h3><p>${x.d}</p><textarea id="ed${i}" spellcheck=false>${esc(window['_c'+id]??x.st)}</textarea><div class=row><button class=p onclick="run(${i})">▶ Run Code</button><button id="sb${i}" ${tries[id]?'':'disabled'} onclick="sol(${i})">👁 Voir la correction</button></div><div class=out id="out${i}">${esc(window['_o'+id]||'> sortie de la console…')}</div></div>`}).join('');
+  if(sec==='ctf')h=t.ctf.map((x,i)=>{const id=cur+':c'+i;return `<div class=card><h3>${x.t} ${S.done[id]?'<span class=done>🚩 +30 pts</span>':''}</h3><p>${x.d}${x.pre?'':`<code>${esc(x.gen())}</code>`}</p>${x.pre?`<pre>${hl(x.gen())}</pre>`:''}<div class=row><input class=l id="fl${i}" placeholder="FLAG{...}" style="flex:1"><button class=p onclick="flag(${i})">Valider</button></div><p id="fm${i}" class=mut></p></div>`}).join('');
+  $('view').innerHTML=h;renderTop();
+}
+window.go=k=>{cur=k;sec='docs';render()};window.gs=s=>{sec=s;render()};
+window.ans=(id,i,j)=>{window['_a'+id]=j;if(j===T[cur].quiz[i].a)win(id);render()};
+window.run=i=>{ // console simulée : vérifie le code par motifs, affiche la sortie attendue
+  const x=T[cur].ex[i],id=cur+':e'+i,code=$('ed'+i).value;window['_c'+id]=code;tries[id]=1;
+  const ok=x.must.every(r=>r.test(code));
+  window['_o'+id]=ok?'> '+x.out.split('\n').join('\n> ')+'\n✔ Programme terminé (code 0)':'✖ Erreur : la sortie ne correspond pas à l\'attendu.\nIndice : relisez la consigne.';
+  if(ok)win(id);render()};
+window.sol=i=>{const x=T[cur].ex[i];window['_c'+cur+':e'+i]=x.sol;render()};
+window.flag=i=>{
+  const x=T[cur].ctf[i],v=$('fl'+i).value.trim(),m=$('fm'+i);
+  if(!/^FLAG\{.+\}$/.test(v)){m.textContent='Format attendu : FLAG{...}';return}
+  if(v===x.f){win(cur+':c'+i);render()}else m.textContent='❌ Mauvais flag, réessayez.'};
+window.toggleTheme=()=>{const d=document.documentElement,n=d.dataset.theme==='dark'?'light':'dark';d.dataset.theme=n;localStorage.setItem('theme',n)};
+document.documentElement.dataset.theme=localStorage.getItem('theme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+/* ===== ASSISTANT IA GRATUIT (WebLLM : modèle exécuté dans le navigateur, sans clé ni serveur) ===== */
+let AI=null,aiLog=[],aiBusy=false,aiMode='cloud';
+function aiHTML(){return `<div class=card><h3>🤖 Assistant IA gratuit</h3><p class=mut>${aiMode==='cloud'?'IA cloud (Llama via Groq, quota gratuit) appelée par un serveur Netlify : la clé API reste secrète, jamais visible dans le navigateur.':'Petit modèle Qwen2.5 0,5B exécuté dans votre navigateur (WebGPU : Chrome ou Edge récents), sans clé ni serveur. Premier chargement ≈ 400 Mo.'} L IA peut se tromper : vérifiez avec la documentation.</p><div class=row><select onchange="aiMode=this.value;render()" style="padding:7px;border-radius:8px;background:var(--card);color:var(--tx);border:1px solid var(--bd)"><option value=cloud ${aiMode==='cloud'?'selected':''}>☁️ IA cloud gratuite (Groq)</option><option value=local ${aiMode==='local'?'selected':''}>💻 IA locale (WebGPU)</option></select>${aiMode==='local'?`<button class=p onclick="aiInit()">${AI?'✔ Modèle chargé':'Charger le modèle'}</button>`:'<span class=mut>Connexion requise (anonyme possible)</span>'}<span id=aiSt class=mut></span></div><div class=out id=aiChat style="min-height:200px;max-height:380px;overflow:auto;color:#e6e9f0">${esc(aiLog.map(m=>(m.role==='user'?'Vous : ':'IA : ')+m.content).join('\n\n'))||'Posez une question sur C++, Python, Java ou la cybersécurité…'}</div><div class=row><input class=l id=aiIn placeholder="Votre question…" style="flex:1" onkeydown="if(event.key==='Enter')aiSend()"><button class=p onclick="aiSend()">Envoyer</button></div></div>`}
+window.aiInit=async()=>{
+  const st=$('aiSt');if(AI)return;
+  if(!navigator.gpu){st.textContent='WebGPU indisponible : utilisez Chrome ou Edge récent (ordinateur).';return}
+  try{
+    const w=await import('https://esm.run/@mlc-ai/web-llm');
+    AI=await w.CreateMLCEngine('Qwen2.5-0.5B-Instruct-q4f16_1-MLC',{initProgressCallback:p=>{const e=$('aiSt');if(e)e.textContent=p.text}});
+    render();
+  }catch(e){st.textContent='Erreur de chargement : '+(e.message||e)}
+};
+window.aiSend=async()=>{
+  const inp=$('aiIn'),v=inp.value.trim();
+  if(aiMode==='local'&&!AI){$('aiSt').textContent='Chargez d abord le modèle.';return}
+  if(!v||aiBusy)return;
+  aiBusy=true;inp.value='';aiLog.push({role:'user',content:v});const r={role:'assistant',content:''};aiLog.push(r);
+  const box=$('aiChat'),show=()=>{box.textContent=aiLog.map(m=>(m.role==='user'?'Vous : ':'IA : ')+m.content).join('\n\n');box.scrollTop=box.scrollHeight};show();
+  try{
+    const SYS='Tu es un tuteur de programmation et de cybersécurité. Réponds en français, brièvement, avec de petits exemples de code. En cybersécurité reste éducatif et défensif.';
+    if(aiMode==='cloud'){ // proxy Netlify : la clé API n'est jamais dans le navigateur
+      if(!user)throw new Error('Connectez-vous (même en anonyme) pour utiliser l IA cloud.');
+      const res=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+await user.getIdToken()},body:JSON.stringify({messages:aiLog.slice(0,-1)})});
+      const j=await res.json().catch(()=>({}));
+      if(!res.ok)throw new Error(j.error||('HTTP '+res.status));
+      r.content=j.reply;show();
+    }else{
+      const s=await AI.chat.completions.create({stream:true,max_tokens:400,messages:[{role:'system',content:SYS},...aiLog.slice(0,-1)]});
+      for await(const c of s){r.content+=c.choices[0]?.delta?.content||'';show()}
+    }
+  }catch(e){r.content='Erreur : '+(e.message||e);show()}
+  aiBusy=false;
+};
+
+render();initFB();
+</script>
+</body>
+</html>
