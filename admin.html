@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>CodeLab – Administration</title>
+<style>
+:root{--bg:#f4f5f3;--card:#fff;--ink:#1b2420;--mut:#62706a;--line:#dde2de;--acc:#0f6b5c;--accink:#fff;--bad:#b3261e;--ok:#1d7a3c;box-sizing:border-box}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#111614;--card:#192019;--ink:#e6ece8;--mut:#93a199;--line:#2a3530;--acc:#4fb8a2;--accink:#0b1512;--bad:#ff8a80;--ok:#74d392}}
+:root[data-theme=dark]{--bg:#111614;--card:#192019;--ink:#e6ece8;--mut:#93a199;--line:#2a3530;--acc:#4fb8a2;--accink:#0b1512;--bad:#ff8a80;--ok:#74d392}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+h1,h2{margin:0;font-weight:650;letter-spacing:-.01em}
+button,input,select{font:inherit;color:inherit}
+button,select,input{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:.45rem .7rem}
+button{cursor:pointer}
+button.p{background:var(--acc);color:var(--accink);border-color:var(--acc);font-weight:600}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.wrap{max-width:1100px;margin:0 auto;padding:1.2rem}
+#login{max-width:340px;margin:12vh auto;padding:1.4rem;background:var(--card);border:1px solid var(--line);border-radius:10px;display:grid;gap:.7rem}
+#login p{margin:0;color:var(--mut)}
+.top{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;justify-content:space-between;margin-bottom:1rem}
+.top .r{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem;margin-bottom:1rem}
+.st{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.7rem .9rem}
+.st b{display:block;font-size:1.5rem;line-height:1.2}
+.st span{color:var(--mut);font-size:.85rem}
+.bar{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem}
+.bar input{flex:1 1 200px}
+.tbl{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:8px}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th,td{padding:.55rem .8rem;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--mut);font-weight:600;font-size:.85rem}
+tr:last-child td{border-bottom:0}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+.id{color:var(--mut);font:.8rem ui-monospace,Menlo,Consolas,monospace}
+.tag{font-size:.78rem;padding:.1rem .45rem;border-radius:99px;border:1px solid var(--line);color:var(--mut)}
+.tag.bad{color:var(--bad);border-color:var(--bad)}
+.tag.ok{color:var(--ok);border-color:var(--ok)}
+#toast{position:fixed;left:50%;bottom:calc(1rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:.55rem 1rem;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.on{opacity:1}#toast.err{background:var(--bad);color:#fff}
+.empty{padding:1.5rem;text-align:center;color:var(--mut)}
+[hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<form id="login" autocomplete="on">
+  <h1>Administration CodeLab</h1>
+  <p>Connecte-toi avec ton compte administrateur.</p>
+  <input id="em" type="email" placeholder="E-mail" autocomplete="username" required>
+  <input id="pw" type="password" placeholder="Mot de passe" autocomplete="current-password" required>
+  <button class="p" type="submit">Se connecter</button>
+  <p id="lerr" style="color:var(--bad)" role="alert"></p>
+</form>
+
+<div id="app" class="wrap" hidden>
+  <div class="top">
+    <h1>Comptes CodeLab</h1>
+    <div class="r">
+      <span id="who" class="id"></span>
+      <button id="rf">Actualiser</button>
+      <button id="csv">Exporter en CSV</button>
+      <button id="lg">Journal</button>
+      <button id="out">Se déconnecter</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div id="main">
+    <div class="bar">
+      <input id="q" type="search" placeholder="Rechercher un e-mail ou un identifiant">
+      <select id="f" aria-label="Filtrer">
+        <option value="all">Tous les comptes</option>
+        <option value="email">Avec e-mail</option>
+        <option value="anon">Anonymes</option>
+        <option value="off">Bloqués</option>
+        <option value="day">Actifs sur 24 h</option>
+      </select>
+      <select id="s" aria-label="Trier">
+        <option value="points">Plus de points</option>
+        <option value="login">Connexion récente</option>
+        <option value="created">Création récente</option>
+      </select>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th>Compte</th><th>Type</th><th class="n">Points</th><th>Dernière connexion</th><th>Créé le</th><th>Action</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+  </div>
+
+  <div id="logs" hidden>
+    <div class="tbl"><table>
+      <thead><tr><th>Date</th><th>Admin</th><th>Action</th><th>Compte visé</th></tr></thead>
+      <tbody id="lrows"></tbody>
+    </table></div>
+  </div>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+const API = '/.netlify/functions/admin';
+const $ = s => document.querySelector(s);
+let token = sessionStorage.getItem('adm'), users = [];
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = d => d ? new Date(d).toLocaleString('fr-FR', {dateStyle:'short', timeStyle:'short'}) : '—';
+const ts = d => d ? new Date(d).getTime() : 0;
+const label = u => u.email || 'Anonyme ' + u.uid.slice(0, 6);
+
+function toast(m, err) {
+  const t = $('#toast'); t.textContent = m; t.className = 'on' + (err ? ' err' : '');
+  clearTimeout(toast.id); toast.id = setTimeout(() => t.className = '', 3200);
+}
+
+async function call(body) {
+  const r = await fetch(API, {method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer ' + token}, body:JSON.stringify(body)});
+  const d = await r.json().catch(() => ({error:'Réponse invalide du serveur'}));
+  if (r.status === 401 && body.action !== 'login') { logout(); throw new Error(d.error); }
+  if (!r.ok) throw new Error(d.error || 'Erreur ' + r.status);
+  return d;
+}
+
+function show(on) { $('#login').hidden = on; $('#app').hidden = !on; }
+function logout() { token = null; sessionStorage.clear(); show(false); }
+
+$('#login').addEventListener('submit', async e => {
+  e.preventDefault(); $('#lerr').textContent = '';
+  try {
+    const d = await call({action:'login', email:$('#em').value, password:$('#pw').value});
+    token = d.token; sessionStorage.setItem('adm', token); sessionStorage.setItem('admmail', d.email);
+    $('#pw').value = ''; start();
+  } catch (err) { $('#lerr').textContent = err.message; }
+});
+
+async function load() {
+  users = (await call({action:'list'})).users;
+  render();
+}
+
+async function start() {
+  show(true); $('#who').textContent = sessionStorage.getItem('admmail') || '';
+  try { await load(); } catch (e) { if (token) toast(e.message, true); }
+}
+
+function render() {
+  const now = Date.now(), day = 864e5;
+  const mail = users.filter(u => u.email).length;
+  const sum = users.reduce((a, u) => a + u.points, 0);
+  const act = users.filter(u => now - ts(u.lastSignIn) < day).length;
+  $('#stats').innerHTML = [
+    [users.length, 'comptes'], [mail, 'avec e-mail'], [users.length - mail, 'anonymes'],
+    [act, 'actifs sur 24 h'], [sum, 'points au total'], [users.filter(u => u.disabled).length, 'bloqués']
+  ].map(([n, l]) => `<div class="st"><b>${n}</b><span>${l}</span></div>`).join('');
+
+  const q = $('#q').value.trim().toLowerCase(), f = $('#f').value, s = $('#s').value;
+  let list = users.filter(u => (!q || (u.email || '').toLowerCase().includes(q) || u.uid.toLowerCase().includes(q)) &&
+    (f === 'all' || (f === 'email' && u.email) || (f === 'anon' && !u.email) || (f === 'off' && u.disabled) || (f === 'day' && now - ts(u.lastSignIn) < day)));
+  list.sort((a, b) => s === 'points' ? b.points - a.points : s === 'login' ? ts(b.lastSignIn) - ts(a.lastSignIn) : ts(b.created) - ts(a.created));
+
+  $('#rows').innerHTML = list.length ? list.map(u => `<tr>
+    <td>${esc(label(u))}<br><span class="id">${esc(u.uid)}</span></td>
+    <td>${u.email ? 'E-mail' : 'Anonyme'} ${u.isAdmin ? '<span class="tag ok">admin</span>' : ''} ${u.disabled ? '<span class="tag bad">bloqué</span>' : ''} ${u.orphan ? '<span class="tag bad">sans connexion</span>' : ''}</td>
+    <td class="n">${u.points}</td><td>${fmt(u.lastSignIn)}</td><td>${fmt(u.created)}</td>
+    <td><select data-uid="${esc(u.uid)}" aria-label="Action pour ${esc(label(u))}">
+      <option value="">Choisir…</option>
+      <option value="setPoints">Modifier les points</option>
+      <option value="${u.disabled ? 'enable' : 'disable'}">${u.disabled ? 'Débloquer' : 'Bloquer'}</option>
+      <option value="revoke">Déconnecter partout</option>
+      ${u.email ? '<option value="resetLink">Lien de nouveau mot de passe</option>' : ''}
+      <option value="resetProgress">Réinitialiser la progression</option>
+      <option value="delete">Supprimer le compte</option>
+    </select></td></tr>`).join('') : '<tr><td colspan="6" class="empty">Aucun compte ne correspond.</td></tr>';
+}
+
+$('#rows').addEventListener('change', e => {
+  const sel = e.target.closest('select'); if (!sel || !sel.value) return;
+  const a = sel.value, uid = sel.dataset.uid; sel.value = ''; act(uid, a);
+});
+
+async function act(uid, a) {
+  const u = users.find(x => x.uid === uid), n = label(u);
+  try {
+    if (a === 'setPoints') {
+      const v = prompt('Nouveau total de points pour ' + n + ' :', u.points);
+      if (v === null) return; await call({action:a, uid, value:v});
+    } else if (a === 'delete') {
+      if (!confirm('Supprimer définitivement ' + n + ' et toute sa progression ?')) return; await call({action:a, uid});
+    } else if (a === 'resetProgress') {
+      if (!confirm('Effacer la progression de ' + n + ' ?')) return; await call({action:a, uid});
+    } else if (a === 'resetLink') {
+      const d = await call({action:a, uid}); prompt('Lien à envoyer à l’utilisateur :', d.link); return;
+    } else await call({action:a, uid});
+    toast('Action effectuée'); await load();
+  } catch (e) { toast(e.message, true); }
+}
+
+['#q', '#f', '#s'].forEach(s => $(s).addEventListener('input', render));
+$('#rf').onclick = () => load().then(() => toast('Liste actualisée')).catch(e => toast(e.message, true));
+$('#out').onclick = logout;
+
+$('#csv').onclick = () => {
+  const rows = [['uid','email','type','points','bloque','derniere_connexion','cree_le']]
+    .concat(users.map(u => [u.uid, u.email || '', u.email ? 'email' : 'anonyme', u.points, u.disabled ? 'oui' : 'non', u.lastSignIn || '', u.created || '']));
+  const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], {type:'text/csv'}));
+  a.download = 'codelab-comptes.csv'; a.click(); URL.revokeObjectURL(a.href);
+};
+
+$('#lg').onclick = async () => {
+  const showLogs = $('#logs').hidden;
+  if (showLogs) {
+    try {
+      const {logs} = await call({action:'logs'});
+      $('#lrows').innerHTML = logs.length ? logs.map(l => `<tr><td>${fmt(l.at)}</td><td>${esc(l.by)}</td><td>${esc(l.action)}</td><td class="id">${esc(l.target)}</td></tr>`).join('') : '<tr><td colspan="4" class="empty">Aucune action enregistrée.</td></tr>';
+    } catch (e) { return toast(e.message, true); }
+  }
+  $('#logs').hidden = !showLogs; $('#main').hidden = showLogs; $('#lg').textContent = showLogs ? 'Retour aux comptes' : 'Journal';
+};
+
+if (token) start();
+</script>
+</body>
+</html>
